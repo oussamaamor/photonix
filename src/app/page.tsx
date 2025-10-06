@@ -1,202 +1,122 @@
 "use client";
 
-import { useState } from "react";
-import dynamic from "next/dynamic";
-
-// Dynamically import Plotly with SSR disabled
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
-
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { FlaskConical, Brain, Database, LineChart } from "lucide-react";
 
-// --- Simulation Core Types & Function ---
-interface MaterialParams {
-  Eg0: number;
-  alpha: number;
-  beta: number;
-}
-
-interface SimulationConfig {
-  Tmin: number;
-  Tmax: number;
-  steps: number;
-  peakFwhm: number;
-  amplitude: number;
-  instrumentResolution: number;
-}
-
-interface Spectrum {
-  temperature: number;
-  Eg: number;
-  energies: number[];
-  intensities: number[];
-}
-
-// Simple Varshni PL + Bandgap simulation
-export function runTemperatureSweep(material: MaterialParams, config: SimulationConfig): Spectrum[] {
-  const spectra: Spectrum[] = [];
-  const dT = (config.Tmax - config.Tmin) / (config.steps - 1);
-
-  for (let i = 0; i < config.steps; i++) {
-    const T = config.Tmin + i * dT;
-    const Eg = material.Eg0 - (material.alpha * T * T) / (T + material.beta);
-
-    const energies: number[] = [];
-    const intensities: number[] = [];
-    const numPoints = 200;
-
-    for (let j = 0; j < numPoints; j++) {
-      const E = Eg - 0.1 + (0.2 * j) / numPoints; // ±0.1 eV around Eg
-      const I = config.amplitude * Math.exp(-Math.pow(E - Eg, 2) / (2 * config.peakFwhm * config.peakFwhm));
-      energies.push(E);
-      intensities.push(I);
-    }
-
-    spectra.push({ temperature: T, Eg, energies, intensities });
-  }
-
-  return spectra;
-}
-
-// --- React Component ---
-export default function SimulatePage() {
-  const [Eg0, setEg0] = useState(2.3);
-  const [alpha, setAlpha] = useState(0.0005);
-  const [beta, setBeta] = useState(200);
-  const [Tmin, setTmin] = useState(100);
-  const [Tmax, setTmax] = useState(400);
-  const [steps, setSteps] = useState(50);
-
-  const [spectra, setSpectra] = useState<Spectrum[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const runSimulation = () => {
-    const material: MaterialParams = { Eg0, alpha, beta };
-    const config: SimulationConfig = {
-      Tmin,
-      Tmax,
-      steps,
-      peakFwhm: 0.05,
-      amplitude: 1,
-      instrumentResolution: 0.01,
-    };
-    const results = runTemperatureSweep(material, config);
-    setSpectra(results);
-    setCurrentIndex(0);
-  };
-
-  const exportCSV = () => {
-    if (!spectra.length) return;
-    const csvContent = spectra
-      .map((s) => `T=${s.temperature},` + s.energies.map((e, i) => `${e}:${s.intensities[i]}`).join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "simulation.csv";
-    link.click();
-  };
-
+export default function HomePage() {
   return (
-    <main className="min-h-screen p-8 bg-slate-50">
-      <h1 className="text-2xl font-bold mb-6">Perovskite Simulation</h1>
-
-      {/* Parameter Form */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <Label htmlFor="Eg0">Eg0 (eV)</Label>
-          <Input id="Eg0" type="number" step="0.01" value={Eg0} onChange={(e) => setEg0(parseFloat(e.target.value))} />
-        </div>
-        <div>
-          <Label htmlFor="alpha">Alpha</Label>
-          <Input id="alpha" type="number" step="0.0001" value={alpha} onChange={(e) => setAlpha(parseFloat(e.target.value))} />
-        </div>
-        <div>
-          <Label htmlFor="beta">Beta</Label>
-          <Input id="beta" type="number" step="1" value={beta} onChange={(e) => setBeta(parseFloat(e.target.value))} />
-        </div>
-        <div>
-          <Label htmlFor="Tmin">T min (K)</Label>
-          <Input id="Tmin" type="number" value={Tmin} onChange={(e) => setTmin(parseFloat(e.target.value))} />
-        </div>
-        <div>
-          <Label htmlFor="Tmax">T max (K)</Label>
-          <Input id="Tmax" type="number" value={Tmax} onChange={(e) => setTmax(parseFloat(e.target.value))} />
-        </div>
-        <div>
-          <Label htmlFor="steps">Steps</Label>
-          <Input id="steps" type="number" value={steps} onChange={(e) => setSteps(parseInt(e.target.value))} />
-        </div>
-      </div>
-
-      <Button className="mb-4" onClick={runSimulation}>
-        Run Simulation
-      </Button>
-
-      {spectra.length > 0 && (
-        <div className="mb-6">
-          <label className="block mb-1">Animate PL Spectrum:</label>
-          <input
-            type="range"
-            min={0}
-            max={spectra.length - 1}
-            value={currentIndex}
-            onChange={(e) => setCurrentIndex(parseInt(e.target.value))}
-            className="w-full mb-1"
-          />
-          <p>T = {spectra[currentIndex].temperature.toFixed(1)} K</p>
-          <Button className="mb-4 mt-2" onClick={exportCSV}>
-            Export CSV
+    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900">
+      {/* Hero Section */}
+      <section className="text-center py-24 px-6">
+        <motion.h1
+          className="text-5xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          Photonix — The AI-Powered Research Companion
+        </motion.h1>
+        <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10">
+          Analyze, visualize, and interpret your scientific data with the power of AI.  
+          From spectroscopy to electrochemistry — Photonix understands your data.
+        </p>
+        <div className="flex justify-center gap-4">
+          <Button size="lg" className="rounded-2xl px-8 text-lg">
+            Try Demo
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="rounded-2xl px-8 text-lg border-2"
+          >
+            Request Access
           </Button>
         </div>
-      )}
+      </section>
 
-      {/* Plots */}
-      {spectra.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Bandgap vs T */}
-          <Plot
-            data={[
-              {
-                x: spectra.map((s) => s.temperature),
-                y: spectra.map((s) => s.Eg),
-                type: "scatter",
-                mode: "lines+markers",
-                name: "Eg(T)",
-              },
-            ]}
-            layout={{
-              width: 500,
-              height: 400,
-              title: { text: "Bandgap vs Temperature" },
-              xaxis: { title: "T (K)" },
-              yaxis: { title: "Eg (eV)" },
-            }}
-          />
-
-          {/* PL spectrum at current index */}
-          <Plot
-            data={[
-              {
-                x: spectra[currentIndex].energies,
-                y: spectra[currentIndex].intensities,
-                type: "scatter",
-                mode: "lines",
-                name: "PL Spectrum",
-              },
-            ]}
-            layout={{
-              width: 500,
-              height: 400,
-              title: { text: `PL Spectrum at T=${spectra[currentIndex].temperature.toFixed(1)} K` },
-              xaxis: { title: "Energy (eV)" },
-              yaxis: { title: "Intensity (a.u.)" },
-            }}
-          />
+      {/* Supported Techniques */}
+      <section className="py-16 bg-slate-100">
+        <h2 className="text-3xl font-semibold text-center mb-10">
+          Supported Techniques
+        </h2>
+        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 px-4">
+          {[
+            "XRD",
+            "Raman",
+            "FTIR",
+            "NMR",
+            "XPS",
+            "UV-Vis",
+            "PL",
+            "Square Wave Voltammetry",
+            "Linear Sweep Voltammetry",
+            "CV",
+          ].map((tech, i) => (
+            <motion.div
+              key={i}
+              whileHover={{ scale: 1.05 }}
+              className="bg-white rounded-2xl shadow p-3 text-center font-medium text-slate-700"
+            >
+              {tech}
+            </motion.div>
+          ))}
         </div>
-      )}
+      </section>
+
+      {/* AI-Powered Analysis */}
+      <section className="py-20 px-6">
+        <h2 className="text-3xl font-semibold text-center mb-12">
+          AI That Understands Science
+        </h2>
+        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
+          {[
+            {
+              icon: Brain,
+              title: "Natural Language Understanding",
+              desc: "Ask Photonix to generate plots, analyze spectra, or summarize experimental data in natural language.",
+            },
+            {
+              icon: Database,
+              title: "Smart Data Handling",
+              desc: "Import multiple files (XRD, Raman, Electrochemical...) and Photonix will automatically classify and process them.",
+            },
+            {
+              icon: LineChart,
+              title: "Instant Visualization",
+              desc: "Animate, overlay, or deconvolute curves easily with AI-assisted interpretation and rich visualization tools.",
+            },
+          ].map((f, i) => (
+            <motion.div
+              key={i}
+              whileHover={{ scale: 1.03 }}
+              className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center text-center"
+            >
+              <f.icon className="w-12 h-12 mb-4 text-indigo-600" />
+              <h3 className="font-semibold text-lg mb-2">{f.title}</h3>
+              <p className="text-slate-600">{f.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-center">
+        <h2 className="text-3xl font-semibold mb-6">
+          Ready to Supercharge Your Research?
+        </h2>
+        <p className="text-lg mb-10 text-blue-100">
+          Join researchers and labs using Photonix to automate and accelerate scientific insights.
+        </p>
+        <Button
+          size="lg"
+          variant="secondary"
+          className="rounded-2xl px-8 text-lg font-semibold"
+        >
+          Join the Beta
+        </Button>
+      </section>
     </main>
   );
 }
